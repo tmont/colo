@@ -243,17 +243,11 @@ if [ -n "${showUsage}" ]; then
 fi
 
 if [ ${#manifests[@]} -eq 0 ]; then
-	echo "At least one manifest file must be specified"
-	echo "Run '${bold}$0 --help${reset}' for more info"
-	exit 1
+	# read from stdin if no files specified
+	manifests+=(/dev/stdin)
 fi
 
 for file in "${manifests[@]}"; do
-	if [ ! -f "${file}" ]; then
-		error "${file} is not a file"
-		exit 1
-	fi
-
 	lineNo=0
 	while read -r line; do
 		lineNo=$((lineNo += 1))
@@ -285,8 +279,7 @@ for file in "${manifests[@]}"; do
 				errorExitElapsed "Unknown command: ${firstWord} on line ${lineNo} of ${file}"
 				;;
 		esac
-
-	done < "${file}"
+	done < "${file}" || errorExitElapsed "Error reading from ${file}"
 
 done
 

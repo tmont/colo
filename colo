@@ -156,6 +156,15 @@ copy() {
 }
 restartService() {
 	local serviceName=$1
+	local sleepTime=$2
+
+	if [ -z "${sleepTime}" ]; then
+		sleepTime=1
+	fi
+
+	if ! [[ "${sleepTime}" =~ ^[0-9]+$ ]]; then
+		errorExit "sleepTime ($(colorize ${blue} ${sleepTime})) must be an integer"
+	fi
 
 	if [ -z "${serviceName}" ]; then
 		errorExit "$(colorize ${magenta} restartService) expects a service name"
@@ -168,6 +177,15 @@ restartService() {
 		if [ "${loadState}" = "loaded" ]; then
 			info "Service ${serviceName} found in systemctl, restarting..."
 			systemctl restart "${serviceName}" || errorAndExit "Failed to restart ${serviceName}"
+
+			info "Waiting ${sleepTime} seconds before checking status..."
+			sleep ${sleepTime}
+			local status=$(systemctl show "${serviceName}" --property=ActiveState | cut -d '=' -f 2)
+			if [ "${status}" != "active" ]; then
+				errorExit "${serviceName} restarted, but is no longer running!"
+			else
+				info "${serviceName} is running!"
+			fi
 			return
 		else
 			info "Service ${serviceName} not found in systemctl (LoadState=$(colorize ${blue} ${loadState}))"
@@ -182,6 +200,15 @@ restartService() {
 		if [ "${serviceStatus}" != "${serviceName}: unrecognized service" ]; then
 			info "Service ${serviceName} found in service, restarting..."
 			service "${serviceName}" restart || "Failed to restart ${serviceName}"
+
+			info "Waiting ${sleepTime} seconds before checking status..."
+			sleep ${sleepTime}
+			local status=$(service "${serviceName}" status | grep running)
+			if [ -z "${status}" ]; then
+				errorExit "${serviceName} restarted, but is no longer running!"
+			else
+				info "${serviceName} is running!"
+			fi
 			return
 		fi
 	else
